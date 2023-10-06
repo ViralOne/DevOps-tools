@@ -1,37 +1,48 @@
-# Check where Static website hosting is disabled on your S3 bucket
-
 import boto3
 from concurrent.futures import ThreadPoolExecutor
+from lib import aws_profile_manager
 from lib import handle_exit
+import logging
 
-profile_name = input("Enter your AWS Profile Name: ")
-session = boto3.Session(profile_name=profile_name)
-s3 = session.client('s3')
+# Constants
+MAX_WORKERS = 10
 
-def check_s3_static_website(bucket_name):
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def main(profile_name):
     try:
-        static_website = s3.get_bucket_website(Bucket=bucket_name)
-        print(f"Website hosting is enabled for {bucket_name}")
-    except Exception as e:
-        if 'NoSuchWebsiteConfiguration' in str(e):
-            print(f"Website hosting is disabled for {bucket_name}")
-        else:
-            print(f"An error occurred for bucket {bucket_name}: {e}")
-
-def main():
-    try:
-        response = s3.list_buckets()
+        # Create a session with the selected AWS profile
+        session = boto3.Session(profile_name=profile_name)
+        s3_client = session.client('s3')
+        
+        response = s3_client.list_buckets()
         buckets = response['Buckets']
         if buckets:
-            print("List of S3 buckets:")
-            with ThreadPoolExecutor(max_workers=10) as executor:
+            logger.info("List of S3 buckets:")
+            with ThreadPoolExecutor(MAX_WORKERS) as executor:
                 for bucket in buckets:
                     bucket_name = bucket['Name']
-                    executor.submit(check_s3_static_website, bucket_name)
+                    executor.submit(check_s3_static_website, s3_client, bucket_name)
         else:
-            print("No S3 buckets found in the account.")
+            logger.info("No S3 buckets found in the account.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
+
+def check_s3_static_website(s3_client, bucket_name):
+    try:
+        static_website = s3_client.get_bucket_website(Bucket=bucket_name)
+        logger.info(f"Website hosting is enabled for {bucket_name}")
+    except Exception as e:
+        if 'NoSuchWebsiteConfiguration' in str(e):
+            logger.info(f"Website hosting is disabled for {bucket_name}")
+        else:
+            logger.info(f"An error occurred for bucket {bucket_name}: {e}")
 
 if __name__ == "__main__":
-    main()
+    selected_profile = aws_profile_manager.select_aws_profile_interactively()
+
+    if selected_profile:
+        logger.info(f"Selected AWS Profile: {selected_profile}")
+        main(selected_profile)

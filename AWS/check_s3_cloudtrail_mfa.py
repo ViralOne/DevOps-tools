@@ -1,26 +1,45 @@
-# Check that AWS CloudTrail logging bucket has MFA enabled
-
 import boto3
 import json
 from concurrent.futures import ThreadPoolExecutor
+from lib import aws_profile_manager
 from lib import handle_exit
+import logging
 
-profile_name = input("Enter your AWS Profile Name: ")
-session = boto3.Session(profile_name=profile_name)
-s3_client = session.client('s3')
+# Constants
+MAX_WORKERS = 10
 
-def check_bucket_mfa(bucket_name):
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def main(profile_name):
+    try:
+        # Create a session with the selected AWS profile
+        session = boto3.Session(profile_name=profile_name)
+        s3_client = session.client('s3')
+
+        response = s3_client.list_buckets()
+        buckets = response['Buckets']
+        if buckets:
+            logger.info("List of S3 buckets:")
+            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                for bucket in buckets:
+                    bucket_name = bucket['Name']
+                    executor.submit(check_bucket_mfa, s3_client, bucket_name)
+        else:
+            logger.info("No S3 buckets found in the account.")
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+
+def check_bucket_mfa(s3_client, bucket_name):
+    """Check that AWS CloudTrail logging bucket has MFA enabled"""
     try:
         # Get the bucket versioning configuration
         bucket_versioning = s3_client.get_bucket_versioning(Bucket=bucket_name)
-
-        # Get the bucket policy
         bucket_policy = s3_client.get_bucket_policy(Bucket=bucket_name)
-
-        # Parse the policy JSON
         policy_json = json.loads(bucket_policy['Policy'])
 
-        # Check if MFA is enabled (versioning.mfaDelete should not be false)
+        # Check if MFA is enabled
         if (
             'Status' in bucket_versioning
             and bucket_versioning['Status'] == 'Enabled'
@@ -31,21 +50,17 @@ def check_bucket_mfa(bucket_name):
                 for statement in policy_json.get('Statement', [])
             )
         ):
-            print(f"Bucket {bucket_name} has MFA enabled and allows CloudTrail access.")
+            logger.info(f"Bucket {bucket_name} has MFA enabled and allows CloudTrail access.")
         else:
-            print(f"Bucket {bucket_name} does not meet the desired conditions.")
+            logger.info(f"Bucket {bucket_name} does not meet the desired conditions.")
     except s3_client.exceptions.NoSuchBucket:
-        print(f"Bucket {bucket_name} does not exist.")
+        logger.info(f"Bucket {bucket_name} does not exist.")
     except Exception as e:
-        print(f"Error checking bucket {bucket_name}: {str(e)}")
+        logger.error(f"Error checking bucket {bucket_name}: {str(e)}")
 
-# List all S3 bucket names
-response = s3_client.list_buckets()
-buckets = response['Buckets']
+if __name__ == "__main__":
+    selected_profile = aws_profile_manager.select_aws_profile_interactively()
 
-# Use ThreadPoolExecutor for concurrent checking
-with ThreadPoolExecutor(max_workers=10) as executor:
-    # Submit each bucket for checking
-    for bucket in buckets:
-        bucket_name = bucket['Name']
-        executor.submit(check_bucket_mfa, bucket_name)
+    if selected_profile:
+        logger.info(f"Selected AWS Profile: {selected_profile}")
+        main(selected_profile)
