@@ -3,15 +3,11 @@
 import boto3, sys, signal
 import json
 from concurrent.futures import ThreadPoolExecutor
+from lib import handle_exit
 
 profile_name = input("Enter your AWS Profile Name: ")
 session = boto3.Session(profile_name=profile_name)
 s3_client = session.client('s3')
-
-def handle_exit(signal, frame):
-    print("Execution stopped by user.")
-    sys.exit(0)
-signal.signal(signal.SIGINT, handle_exit)
 
 def check_bucket_policy(bucket_name):
     try:
