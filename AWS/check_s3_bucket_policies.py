@@ -1,34 +1,46 @@
-# Check if S3 buckets are publicly accessible
-
+import logging
 import boto3
 from concurrent.futures import ThreadPoolExecutor
+from lib import aws_profile_manager
 from lib import handle_exit
 
-profile_name = input("Enter your AWS Profile Name: ")
-session = boto3.Session(profile_name=profile_name)
-s3 = session.client('s3')
+# Constants
+MAX_WORKERS = 10
 
-def check_bucket_policy(bucket_name):
-    try:
-        policy_s3 = s3.get_bucket_policy(Bucket=bucket_name)
-        print(f"Policy exists for {bucket_name}")
-    except Exception as e:
-        print(f"Policy does not exist for {bucket_name}: {e}")
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def main():
+def main(profile_name):
     try:
-        response = s3.list_buckets()
+        # Create a session with the selected AWS profile
+        session = boto3.Session(profile_name=profile_name)
+        s3_client = session.client('s3')
+
+        response = s3_client.list_buckets()
         buckets = response['Buckets']
         if buckets:
-            print("List of S3 buckets:")
-            with ThreadPoolExecutor(max_workers=10) as executor:
+            logger.info("List of S3 buckets:")
+            with ThreadPoolExecutor(MAX_WORKERS) as executor:
                 for bucket in buckets:
                     bucket_name = bucket['Name']
-                    executor.submit(check_bucket_policy, bucket_name)
+                    executor.submit(check_bucket_policy, s3_client, bucket_name)
         else:
-            print("No S3 buckets found in the account.")
+            logger.info("No S3 buckets found in the account.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error("An error occurred: %s", e)
+
+def check_bucket_policy(s3_client, bucket_name):
+    """Check if S3 buckets are publicly accessible."""
+    try:
+        policy_s3 = s3_client.get_bucket_policy(Bucket=bucket_name)
+        logger.info("Policy exists for %s", bucket_name)
+    except Exception as e:
+        logger.error("Policy does not exist for %s: %s",bucket_name, e)
 
 if __name__ == "__main__":
-    main()
+    selected_profile = aws_profile_manager.select_aws_profile_interactively()
+
+    if selected_profile:
+        logger.info("Selected AWS Profile: %s",selected_profile)
+        main(selected_profile)
