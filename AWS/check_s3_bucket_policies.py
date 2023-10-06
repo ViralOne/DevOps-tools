@@ -1,7 +1,9 @@
 # Check if S3 buckets are publicly accessible
 
 import boto3
-import sys, signal
+from concurrent.futures import ThreadPoolExecutor
+import signal
+import sys
 
 profile_name = input("Enter your AWS Profile Name: ")
 session = boto3.Session(profile_name=profile_name)
@@ -12,19 +14,27 @@ def handle_exit(signal, frame):
     sys.exit(0)
 signal.signal(signal.SIGINT, handle_exit)
 
-try:
-    response = s3.list_buckets()
-    buckets = response['Buckets']
-    if buckets:
-        print("List of S3 buckets:")
-        for bucket in buckets:
-            try:
-                policy_s3 = s3.get_bucket_policy(Bucket=bucket['Name'])
-                # print(policy_s3)
-                print(f"Policy exists for {bucket['Name']}")
-            except Exception as e:
-                    print(f"An error occurred: {e}")
-    else:
-        print("No S3 buckets found in the account.")
-except Exception as e:
-    print(f"An error occurred: {e}")
+def check_bucket_policy(bucket_name):
+    try:
+        policy_s3 = s3.get_bucket_policy(Bucket=bucket_name)
+        print(f"Policy exists for {bucket_name}")
+    except Exception as e:
+        print(f"Policy does not exist for {bucket_name}: {e}")
+
+def main():
+    try:
+        response = s3.list_buckets()
+        buckets = response['Buckets']
+        if buckets:
+            print("List of S3 buckets:")
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                for bucket in buckets:
+                    bucket_name = bucket['Name']
+                    executor.submit(check_bucket_policy, bucket_name)
+        else:
+            print("No S3 buckets found in the account.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()
