@@ -21,7 +21,7 @@ def list_aws_profiles():
         print(f"Error listing AWS profiles: {str(e)}")
         return []
 
-def select_aws_profile_interactively():
+def select_aws_profile():
     """Select an AWS profile interactively."""
     available_profiles = list_aws_profiles()
     if available_profiles:

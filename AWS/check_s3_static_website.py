@@ -41,7 +41,7 @@ def check_s3_static_website(s3_client, bucket_name):
             logger.info("An error occurred for bucket %s: %s", bucket_name, e)
 
 if __name__ == "__main__":
-    selected_profile = aws_profile_manager.select_aws_profile_interactively()
+    selected_profile = aws_profile_manager.select_aws_profile()
 
     if selected_profile:
         logger.info("Selected AWS Profile: %s", selected_profile)

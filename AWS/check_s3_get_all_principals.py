@@ -64,7 +64,7 @@ def check_bucket_policy(s3_client, bucket_name):
         logger.error("Error checking policy for bucket %s: %s", bucket_name, e)
 
 if __name__ == "__main__":
-    selected_profile = aws_profile_manager.select_aws_profile_interactively()
+    selected_profile = aws_profile_manager.select_aws_profile()
 
     if selected_profile:
         logger.info("Selected AWS Profile: %s", selected_profile)

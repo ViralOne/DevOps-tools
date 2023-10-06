@@ -55,7 +55,7 @@ def check_bucket_accessibility(s3_client, bucket_name):
         logger.info("%s is publicly accessible.", bucket_name)
 
 if __name__ == "__main__":
-    selected_profile = aws_profile_manager.select_aws_profile_interactively()
+    selected_profile = aws_profile_manager.select_aws_profile()
 
     if selected_profile:
         logger.info("Selected AWS Profile: %s", selected_profile)
