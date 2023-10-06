@@ -1,8 +1,8 @@
+import logging
 import boto3
 from concurrent.futures import ThreadPoolExecutor
 from lib import aws_profile_manager
 from lib import handle_exit
-import logging
 
 # Constants
 MAX_WORKERS = 10
@@ -28,21 +28,21 @@ def main(profile_name):
         else:
             logger.info("No S3 buckets found in the account.")
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error("An error occurred: %s", e)
 
 def check_s3_static_website(s3_client, bucket_name):
     try:
         static_website = s3_client.get_bucket_website(Bucket=bucket_name)
-        logger.info(f"Website hosting is enabled for {bucket_name}")
+        logger.info("Website hosting is enabled for %s", bucket_name)
     except Exception as e:
         if 'NoSuchWebsiteConfiguration' in str(e):
-            logger.info(f"Website hosting is disabled for {bucket_name}")
+            logger.info("Website hosting is disabled for %s", bucket_name)
         else:
-            logger.info(f"An error occurred for bucket {bucket_name}: {e}")
+            logger.info("An error occurred for bucket %s: %s", bucket_name, e)
 
 if __name__ == "__main__":
     selected_profile = aws_profile_manager.select_aws_profile_interactively()
 
     if selected_profile:
-        logger.info(f"Selected AWS Profile: {selected_profile}")
+        logger.info("Selected AWS Profile: %s", selected_profile)
         main(selected_profile)

@@ -1,8 +1,8 @@
+import logging
 import boto3
 from concurrent.futures import ThreadPoolExecutor
 from lib import aws_profile_manager
 from lib import handle_exit
-import logging
 
 # Constants
 MAX_WORKERS = 10
@@ -28,7 +28,7 @@ def main(profile_name):
         else:
             logger.info("No S3 buckets found in the account.")
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error("An error occurred: %s",e)
 
 def is_bucket_public(s3_client, bucket_name):
     try:
@@ -45,18 +45,18 @@ def is_bucket_public(s3_client, bucket_name):
             return True
         return False
     except Exception as e:
-        logger.error(f"An error occurred while checking {bucket_name}: {e}")
+        logger.error("An error occurred while checking %s: %s", bucket_name, e)
         return False
 
 def check_bucket_accessibility(s3_client, bucket_name):
     if not is_bucket_public(s3_client, bucket_name):
-        logger.info(f"{bucket_name} is not publicly accessible.")
+        logger.info("%s is not publicly accessible.", bucket_name)
     else:
-        logger.info(f"{bucket_name} is publicly accessible.")
+        logger.info("%s is publicly accessible.", bucket_name)
 
 if __name__ == "__main__":
     selected_profile = aws_profile_manager.select_aws_profile_interactively()
 
     if selected_profile:
-        logger.info(f"Selected AWS Profile: {selected_profile}")
+        logger.info("Selected AWS Profile: %s", selected_profile)
         main(selected_profile)

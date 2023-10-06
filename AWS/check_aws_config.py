@@ -1,7 +1,7 @@
-from lib import aws_profile_manager
-import boto3
-from lib import handle_exit
 import logging
+import boto3
+from lib import aws_profile_manager
+from lib import handle_exit
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -27,10 +27,13 @@ def configure_aws_config(profile_name):
             if 'DeliveryChannelsStatus' in delivery_channel_response:
                 delivery_channel_status = delivery_channel_response['DeliveryChannelsStatus'][0]
 
-                if 's3BucketName' in delivery_channel_status or 'snsTopicARN' in delivery_channel_status:
+                if (
+                    's3BucketName' in delivery_channel_status
+                    or 'snsTopicARN' in delivery_channel_status
+                ):
                     logger.info("AWS Config delivery channel is configured.")
-                    logger.info(f"S3 Bucket Name: {delivery_channel_status.get('s3BucketName', 'Not configured')}")
-                    logger.info(f"SNS Topic ARN: {delivery_channel_status.get('snsTopicARN', 'Not configured')}")
+                    logger.info("S3 Bucket Name: %s",delivery_channel_status.get('s3BucketName', 'Not configured'))
+                    logger.info("SNS Topic ARN: %s",delivery_channel_status.get('snsTopicARN', 'Not configured'))
                 else:
                     logger.info("AWS Config delivery channel is not fully configured.")
             else:
@@ -38,11 +41,11 @@ def configure_aws_config(profile_name):
         else:
             logger.info("AWS configuration recorder is set to FALSE")
     except Exception as e:
-        logger.error(f"Error checking AWS Config: {str(e)}")
+        logger.error("Error checking AWS Config: %s",e)
 
 if __name__ == "__main__":
     selected_profile = aws_profile_manager.select_aws_profile_interactively()
 
     if selected_profile:
-        logger.info(f"Selected AWS Profile: {selected_profile}")
+        logger.info("Selected AWS Profile: %s",selected_profile)
         configure_aws_config(selected_profile)
