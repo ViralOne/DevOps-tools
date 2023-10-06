@@ -1,6 +1,6 @@
 # Check if the S3 bucket allows GET actions from all principals
 
-import boto3, sys, signal
+import boto3
 import json
 from concurrent.futures import ThreadPoolExecutor
 from lib import handle_exit
