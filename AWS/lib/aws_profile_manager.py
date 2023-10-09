@@ -22,7 +22,7 @@ def list_aws_profiles():
         return []
 
 def select_aws_profile():
-    """Select an AWS profile interactively."""
+    """Select an AWS profile"""
     available_profiles = list_aws_profiles()
     if available_profiles:
         profile_completer = WordCompleter(available_profiles)
