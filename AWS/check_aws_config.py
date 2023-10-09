@@ -44,7 +44,7 @@ def configure_aws_config(profile_name):
         logger.error("Error checking AWS Config: %s",e)
 
 if __name__ == "__main__":
-    selected_profile = aws_profile_manager.select_aws_profile_interactively()
+    selected_profile = aws_profile_manager.select_aws_profile()
 
     if selected_profile:
         logger.info("Selected AWS Profile: %s",selected_profile)
