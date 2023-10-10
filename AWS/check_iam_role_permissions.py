@@ -30,11 +30,11 @@ def check_role_policies(role_name, iam_client):
                     
                     # Check if the policy allows any service actions
                     if isinstance(actions, str) and actions.startswith(SERVICE_PREFIX):
-                        print(f"Role: {role_name}, Policy: {policy_name}, Action: {actions}, Resource: {resources}")
+                        logger.info("Role: %s, Policy: %s, Action: %s, Resource: %s", role_name, policy_name, action, resources)
                     elif isinstance(actions, list):
                         for action in actions:
                             if action.startswith(SERVICE_PREFIX):
-                                print(f"Role: {role_name}, Policy: {policy_name}, Action: {action}, Resource: {resources}")
+                                logger.info("Role: %s, Policy: %s, Action: %s, Resource: %s", role_name, policy_name, action, resources)
 
 def main(profile_name):
     # Initialize the AWS IAM client

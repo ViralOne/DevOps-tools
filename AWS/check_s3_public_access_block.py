@@ -23,9 +23,9 @@ def main(profile_name):
             with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 executor.map(check_public_access_block, [(s3_client, bucket_name) for bucket_name in bucket_names])
         else:
-            print("No S3 buckets found in the account.")
+            logger.info("No S3 buckets found in the account.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error("An error occurred: %s", e)
 
 def check_public_access_block(args):
     s3_client, bucket_name = args
@@ -39,11 +39,11 @@ def check_public_access_block(args):
             and public_access_block['BlockPublicPolicy']
             and public_access_block['RestrictPublicBuckets']
         ):
-            print(f"Bucket {bucket_name} does not have public access block enabled.")
+            logger.info("Bucket %s does not have public access block enabled.", bucket_name)
     except s3_client.exceptions.NoSuchBucket:
-        print(f"Bucket {bucket_name} does not exist.")
+        logger.error("Bucket %s does not exist.", bucket_name)
     except Exception as e:
-        print(f"Error checking bucket {bucket_name}: {e}")
+        logger.error("Error checking bucket %s: %s", bucket_name, e)
 
 if __name__ == "__main__":
     selected_profile = aws_profile_manager.select_aws_profile()
