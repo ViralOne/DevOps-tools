@@ -3,30 +3,12 @@
 # Check that VPC Flow Logging is Enabled in all Applicable Regions
 # Where vpcs != isEmpty() should have hasVpcFLowLogging='true'
 
-# AWS regions
-regions=(
-  us-east-1
-  us-east-2
-  us-west-1
-  us-west-2
-  eu-north-1
-  eu-central-1
-  eu-west-1
-  eu-west-2
-  eu-west-3
-  sa-east-1
-  ca-central-1
-  ap-northeast-1
-  ap-northeast-2
-  ap-south-1
-  ap-southeast-1
-  ap-southeast-2
-)
+# Get a list of all AWS regions
+regions=$(aws ec2 describe-regions --output json | jq -r '.Regions[].RegionName')
 
-for region in "${regions[@]}"; do
+for region in $regions; do
   # Get a list of VPCs in the current region
   vpcs=$(aws ec2 describe-vpcs --region "$region" --query 'Vpcs[].VpcId' --output text)
-
   if [ -z "$vpcs" ]; then
     echo "No VPCs found in region $region."
   else
