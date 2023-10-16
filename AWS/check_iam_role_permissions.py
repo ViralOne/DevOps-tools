@@ -12,25 +12,34 @@ SERVICE_PREFIX = 'sqs:'
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+'''Check through all the roles for the policies that are using the desired service'''
+
 def check_role_policies(role_name, iam_client):
-    # Get the role's policies
     role_policies = iam_client.list_attached_role_policies(RoleName=role_name)['AttachedPolicies']
-    
+
     # Check each policy for service permissions
     for policy in role_policies:
         policy_name = policy['PolicyName']
-        policy_document = iam_client.get_policy_version(PolicyArn=policy['PolicyArn'], VersionId='v1')['PolicyVersion']['Document']
+        policy_arn = policy['PolicyArn']
         
+        policy_helper = iam_client.get_policy(
+            PolicyArn = policy_arn
+        )
+        
+        policy_version=policy_helper['Policy']['DefaultVersionId']
+
+        policy_document = iam_client.get_policy_version(PolicyArn=policy_arn, VersionId=policy_version)['PolicyVersion']['Document']
+
         # Check if the policy grants service permissions
         if 'Statement' in policy_document:
             for statement in policy_document['Statement']:
                 if 'Action' in statement and 'Resource' in statement:
                     actions = statement['Action']
                     resources = statement['Resource']
-                    
+
                     # Check if the policy allows any service actions
                     if isinstance(actions, str) and actions.startswith(SERVICE_PREFIX):
-                        logger.info("Role: %s, Policy: %s, Action: %s, Resource: %s", role_name, policy_name, action, resources)
+                        logger.info("Role: %s, Policy: %s, Action: %s, Resource: %s", role_name, policy_name, actions, resources)
                     elif isinstance(actions, list):
                         for action in actions:
                             if action.startswith(SERVICE_PREFIX):
@@ -41,19 +50,17 @@ def main(profile_name):
     session = boto3.Session(profile_name=profile_name)
     iam_client = session.client('iam')
 
-    # List all IAM roles
-    response = iam_client.list_roles()
-
-    # Create a ThreadPoolExecutor
-    with ThreadPoolExecutor(MAX_WORKERS) as executor:
-        # Submit each role to the executor
-        for role in response['Roles']:
+    # Use paginator to list all IAM roles
+    paginator = iam_client.get_paginator('list_roles')
+    for response in paginator.paginate():
+        roles = response['Roles']
+        for role in roles:
             role_name = role['RoleName']
-            executor.submit(check_role_policies, role_name, iam_client)
+            check_role_policies(role_name, iam_client)
 
 if __name__ == "__main__":
     selected_profile = aws_profile_manager.select_aws_profile()
 
     if selected_profile:
-        logger.info("Selected AWS Profile: %s",selected_profile)
+        logger.info("Selected AWS Profile: %s", selected_profile)
         main(selected_profile)
