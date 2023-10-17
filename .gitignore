@@ -1,3 +1,4 @@
 AWS/lib/__pycache__/*
 AWS/lib/handle_exit/__pycache__/*
 AWS/lib/aws_profile_manager/__pycache__/*
+.DS_Store

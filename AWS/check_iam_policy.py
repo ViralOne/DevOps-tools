@@ -56,6 +56,7 @@ def get_policies_for_roles(client, role_names: List[str]) -> Dict[str, List[Dict
     return policy_map
 
 def check_assume_role_statements(client, profile_name, role_name, attached_policies):
+    has_assume_role = False
     for policy in attached_policies:
         arn = policy.get('PolicyArn', 'N/A')
         policy_name = policy.get('PolicyName', 'N/A')
@@ -80,7 +81,12 @@ def check_assume_role_statements(client, profile_name, role_name, attached_polic
                     actions = statement['Action']
 
                 for action in actions:
-                    logger.warning("Role %s is using AssumeRole statement in policy ", role_name, policy_name)
+                    if action == 'sts:AssumeRole':
+                        has_assume_role = True
+                        break
+
+    if has_assume_role:
+        logger.warning("Role %s is using AssumeRole statement in one or more policies", role_name)
 
 if __name__ == "__main__":
     selected_profile = aws_profile_manager.select_aws_profile()

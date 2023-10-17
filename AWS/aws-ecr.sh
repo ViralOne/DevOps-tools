@@ -75,7 +75,7 @@ case $operation in
         ;;
 
     *)
-        echo -e "Invalid operation. Use --list | -l or --search | -s to list images or fetch a specific image. \n                   Use --list-search or -ls to list a specific number of images & search for a image with a specific keyword as well."
+        echo -e "Invalid operation. \nUse --list | -l or --search | -s to list images or fetch a specific image. \nUse --list-search or -ls to list a specific number of images & search for a image with a specific keyword as well."
         echo "Usage: $0 <operation_flag> <ECR_NAME> <NUMBER_OF_IMAGES> | <KEYWORD>"
         echo "Example: $0 -ls myapp 5 beta"
         exit 1
