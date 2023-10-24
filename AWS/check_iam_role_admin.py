@@ -6,13 +6,13 @@ from typing import Dict, List
 import concurrent.futures
 
 # Constants
-MAX_WORKERS = 10
+MAX_WORKERS = 1
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-'''Check if Trusted Policy Roles are assumed by external entities'''
+'''Check if Trusted Policy Roles have Administrator Access'''
 
 def create_iam_client(profile_name):
     try:
@@ -55,11 +55,10 @@ def get_policies_for_roles(client, role_names: List[str]) -> Dict[str, List[Dict
 
     return policy_map
 
-def check_assume_role_statements(client, profile_name, role_name, attached_policies):
-    has_assume_role = False
+def check_administrator_access_for_role(client, role_name, attached_policies):
+    has_administrator_access = False
     for policy in attached_policies:
         arn = policy.get('PolicyArn', 'N/A')
-        policy_name = policy.get('PolicyName', 'N/A')
         try:
             policy = client.get_policy(PolicyArn=arn)
             policy_version = client.get_policy_version(
@@ -75,21 +74,17 @@ def check_assume_role_statements(client, profile_name, role_name, attached_polic
                 isinstance(statement, dict) and
                 statement.get('Effect') == 'Allow'
                 and 'Action' in statement
+                and 'Resource' in statement
+                and statement['Action'] == '*'  # Check if Action is '*' for all actions
+                and statement['Resource'] == '*'  # Check if Resource is '*' for all resources
             ):
-                if isinstance(statement['Action'], str):
-                    actions = [statement['Action']]
-                elif isinstance(statement['Action'], list):
-                    actions = statement['Action']
+                has_administrator_access = True
+                break
 
-                for action in actions:
-                    if action == 'sts:AssumeRole':
-                        has_assume_role = True
-                        break
+    if has_administrator_access:
+        logger.warning("Role %s has Administrator Access in one or more policies", role_name)
 
-    if has_assume_role:
-        logger.warning("Role %s is using AssumeRole statement in one or more policies", role_name)
-
-if __name__ == "__main__":
+def main():
     selected_profile = aws_profile_manager.select_aws_profile()
 
     if selected_profile:
@@ -99,5 +94,15 @@ if __name__ == "__main__":
             role_names = get_role_names(iam_client)
             attached_role_policies = get_policies_for_roles(iam_client, role_names)
 
-            for role_name, policies in attached_role_policies.items():
-                check_assume_role_statements(iam_client, selected_profile, role_name, policies)
+            with concurrent.futures.ThreadPoolExecutor(MAX_WORKERS) as executor:
+                futures = {executor.submit(check_administrator_access_for_role, iam_client, role_name, policies): role_name for role_name, policies in attached_role_policies.items()}
+
+                for future in concurrent.futures.as_completed(futures):
+                    role_name = futures[future]
+                    try:
+                        future.result()
+                    except Exception as e:
+                        logger.error("Error checking administrator access for role %s: %s", role_name, str(e))
+
+if __name__ == "__main__":
+    main()

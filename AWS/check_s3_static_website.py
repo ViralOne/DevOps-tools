@@ -33,12 +33,9 @@ def main(profile_name):
 def check_s3_static_website(s3_client, bucket_name):
     try:
         static_website = s3_client.get_bucket_website(Bucket=bucket_name)
-        logger.info("Website hosting is enabled for %s", bucket_name)
+        logger.warn("Website hosting is enabled for %s", bucket_name)
     except Exception as e:
-        if 'NoSuchWebsiteConfiguration' in str(e):
-            logger.info("Website hosting is disabled for %s", bucket_name)
-        else:
-            logger.info("An error occurred for bucket %s: %s", bucket_name, e)
+        logger.info("An error occurred for bucket %s: %s", bucket_name, e)
 
 if __name__ == "__main__":
     selected_profile = aws_profile_manager.select_aws_profile()
