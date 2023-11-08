@@ -1,0 +1,53 @@
+version: 2.1
+executors:
+  default-executor:
+    docker:
+      - image: cimg/aws:2023.09
+
+jobs:
+  build:
+    executor: default-executor
+    environment:
+      AWS_ACCESS_KEY_ID: $TF_S3_AWS_KEY
+      AWS_SECRET_ACCESS_KEY: $TF_S3_AWS_SECRET
+      AWS_REGION: $TF_S3_AWS_REGION
+    steps:
+      - checkout
+
+      # Step 1: Install tofu tool
+      - run:
+          name: Install Tofu
+          command: |
+            wget https://github.com/opentofu/opentofu/releases/download/v1.6.0-alpha2/tofu_1.6.0-alpha2_linux_amd64.zip
+            unzip tofu_1.6.0-alpha2_linux_amd64.zip
+            sudo mv tofu /usr/local/bin/
+
+      # Step 2: List directories with modified files
+      - run:
+          name: List Modified Terraform Directories
+          command: |
+            modified_dirs=$(git diff --name-only HEAD~1..HEAD | xargs -I {} dirname {} | sort -u)
+            echo "Directories: $modified_dirs"
+            echo "export unique_directories=($(echo "${modified_dirs[@]}" | tr ' ' '\n' | sort -u))" >> $BASH_ENV
+
+      # Step 3: Use Tofu
+      - run:
+          name: Execute Tofu on Modified Directories
+          command: |
+            for dir in "${unique_directories[@]}"; do
+              base_dir=$(pwd)
+              if [[ -n $(find "$dir" -name "*.tf" 2>/dev/null) ]]; then
+                echo "Initializing Terraform in directory: $dir"
+                cd "$dir"
+                tofu init -input=false
+                tofu validate
+                tofu plan
+              fi
+              cd $base_dir
+            done
+
+      # Step 4: ToDO - apply changes only when merged to master
+workflows:
+  deploy_infra:
+    jobs:
+    - build
