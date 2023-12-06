@@ -11,7 +11,7 @@ TIMEOUT_READ = 10.0
 GOOD_STATUS = {200, 403, 503}
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
 
-# Inside check_domain function
+# Check login with headers to not be detected as bot
 def check_domain(domain):
     headers = {
         'User-Agent': USER_AGENT,
