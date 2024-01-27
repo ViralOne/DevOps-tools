@@ -49,7 +49,7 @@ async def scan_cidr(cidr, ports, banner, username=None, password=None, timeout=1
     return await asyncio.gather(*tasks)
 
 def save_to_json(data, output_file):
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    current_time = datetime.now().strftime("%d-%m-%Y-%H%M")
     file_name = f"{output_file}_{current_time}.json"
 
     with open(file_name, 'w') as json_file:
@@ -92,7 +92,7 @@ def parse_args():
     parser.add_argument("-l", "--portlist", help="File containing a list of ports")
     parser.add_argument("-p", "--ports", help="Comma-separated list of ports to scan")
     parser.add_argument("-t", "--timeout", type=float, default=1, help="Timeout value in seconds (default: 1)")
-    parser.add_argument("--banner-grab", action="store_true", help="Grab banner/header from open ports")
+    parser.add_argument("--banner", action="store_true", help="Grab banner/header from open ports")
     parser.add_argument("-o", "--output", help="Output file in JSON format")
     parser.add_argument("--username", help="Username for authentication")
     parser.add_argument("--password", help="Password for authentication")
@@ -115,10 +115,10 @@ def main():
             port_list = [int(line.strip()) for line in port_file]
 
     if args.cidr:
-        results = asyncio.run(scan_cidr(args.cidr, port_list, args.banner_grab, args.username, args.password, args.timeout))
+        results = asyncio.run(scan_cidr(args.cidr, port_list, args.banner, args.username, args.password, args.timeout))
         output_file_name = args.cidr.replace("/", "_") if not args.output else args.output
     else:
-        results = asyncio.run(scan_ports(args.ip, port_list, args.banner_grab, args.username, args.password, args.timeout))
+        results = asyncio.run(scan_ports(args.ip, port_list, args.banner, args.username, args.password, args.timeout))
         output_file_name = args.ip if not args.output else args.output
 
     if args.output:
