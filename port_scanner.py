@@ -2,9 +2,9 @@ import asyncio
 import argparse
 import ipaddress
 
-async def scan_port(ip, port, banner_grab, username=None, password=None):
+async def scan_port(ip, port, banner_grab, username=None, password=None, timeout=1):
     try:
-        reader, writer = await asyncio.open_connection(ip, port)
+        reader, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=timeout)
         print(f"IP: {ip}, Port: {port} - Open")
 
         if banner_grab:
@@ -39,13 +39,13 @@ async def authenticate(reader, writer, username, password):
     except asyncio.CancelledError:
         pass
 
-async def scan_ports(ip, ports, banner_grab, username=None, password=None):
-    tasks = [scan_port(ip, port, banner_grab, username, password) for port in ports]
+async def scan_ports(ip, ports, banner_grab, username=None, password=None, timeout=1):
+    tasks = [scan_port(ip, port, banner_grab, username, password, timeout) for port in ports]
     await asyncio.gather(*tasks)
 
-async def scan_cidr(cidr, ports, banner_grab, username=None, password=None):
+async def scan_cidr(cidr, ports, banner_grab, username=None, password=None, timeout=1):
     network = ipaddress.IPv4Network(cidr, strict=False)
-    tasks = [scan_ports(str(ip), ports, banner_grab, username, password) for ip in network.hosts()]
+    tasks = [scan_ports(str(ip), ports, banner_grab, username, password, timeout) for ip in network.hosts()]
     await asyncio.gather(*tasks)
 
 def main():
@@ -54,6 +54,7 @@ def main():
     parser.add_argument("-i", "--ip", help="Single IP to scan")
     parser.add_argument("-l", "--portlist", help="File containing a list of ports")
     parser.add_argument("-p", "--ports", help="Comma-separated list of ports to scan")
+    parser.add_argument("-t", "--timeout", type=float, default=1, help="Timeout value in seconds (default: 1)")
     parser.add_argument("--banner-grab", action="store_true", help="Grab banner/header from open ports")
     parser.add_argument("--username", help="Username for authentication")
     parser.add_argument("--password", help="Password for authentication")
@@ -67,9 +68,9 @@ def main():
             port_list = [int(line.strip()) for line in port_file]
 
     if args.cidr:
-        asyncio.run(scan_cidr(args.cidr, port_list, args.banner_grab, args.username, args.password))
+        asyncio.run(scan_cidr(args.cidr, port_list, args.banner_grab, args.username, args.password, args.timeout))
     else:
-        asyncio.run(scan_ports(args.ip, port_list, args.banner_grab, args.username, args.password))
+        asyncio.run(scan_ports(args.ip, port_list, args.banner_grab, args.username, args.password, args.timeout))
 
 if __name__ == "__main__":
     main()
