@@ -48,6 +48,19 @@ async def scan_cidr(cidr, ports, banner, username=None, password=None, timeout=1
     tasks = [scan_ports(str(ip), ports, banner, username, password, timeout) for ip in network.hosts()]
     return await asyncio.gather(*tasks)
 
+async def scan_range(start_ip, end_ip, ports, banner, username=None, password=None, timeout=1):
+    start_ip_obj = ipaddress.IPv4Address(start_ip)
+    end_ip_obj = ipaddress.IPv4Address(end_ip)
+
+    current_ip_obj = start_ip_obj
+    tasks = []
+
+    while current_ip_obj <= end_ip_obj:
+        tasks.append(scan_ports(str(current_ip_obj), ports, banner, username, password, timeout))
+        current_ip_obj += 1
+
+    return await asyncio.gather(*tasks)
+
 def save_to_json(data, output_file):
     current_time = datetime.now().strftime("%d-%m-%Y-%H%M")
     file_name = f"{output_file}_{current_time}.json"
@@ -89,6 +102,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Advanced asynchronous port scanner")
     parser.add_argument("-c", "--cidr", help="CIDR notation for scanning multiple IPs")
     parser.add_argument("-i", "--ip", help="Single IP to scan")
+    parser.add_argument("-r", "--range", help="IP range for scanning")
     parser.add_argument("-l", "--portlist", help="File containing a list of ports")
     parser.add_argument("-p", "--ports", help="Comma-separated list of ports to scan")
     parser.add_argument("-t", "--timeout", type=float, default=1, help="Timeout value in seconds (default: 1)")
@@ -101,9 +115,9 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # Check if either -c or -i is provided, and either -l or -p is provided
-    if not ((args.cidr and (args.ports or args.portlist)) or (args.ip and (args.ports or args.portlist))):
-        print("Error: Specify either -c or -i along with either -l or -p.")
+    # Check if either -c, -i, or -r is provided, and either -l or -p is provided
+    if not ((args.cidr or args.ip or args.range) and (args.ports or args.portlist)):
+        print("Error: Specify either -c, -i, or -r along with either -l or -p.")
         sys.exit(1)
 
     port_list = []
@@ -117,6 +131,10 @@ def main():
     if args.cidr:
         results = asyncio.run(scan_cidr(args.cidr, port_list, args.banner, args.username, args.password, args.timeout))
         output_file_name = args.cidr.replace("/", "_") if not args.output else args.output
+    elif args.range:
+        start_ip, end_ip = args.range.split('-')
+        results = asyncio.run(scan_range(start_ip, end_ip, port_list, args.banner, args.username, args.password, args.timeout))
+        output_file_name = args.range.replace("/", "_") if not args.output else args.output
     else:
         results = asyncio.run(scan_ports(args.ip, port_list, args.banner, args.username, args.password, args.timeout))
         output_file_name = args.ip if not args.output else args.output
