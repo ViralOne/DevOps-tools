@@ -1,26 +1,26 @@
 import asyncio
 import argparse
 import ipaddress
+import json
+import sys
+from datetime import datetime
 
-async def scan_port(ip, port, banner_grab, username=None, password=None, timeout=1):
+async def scan_port(ip, port, banner, username=None, password=None, timeout=1):
     try:
         reader, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=timeout)
-        print(f"IP: {ip}, Port: {port} - Open")
+        result = {"ip": ip, "port": port, "status": "Open"}
 
-        if banner_grab:
-            banner = await grab_banner(reader)
-            print(f"Banner: {banner}")
+        if banner:
+            result["banner"] = await grab_banner(reader)
 
         if username and password:
-            auth_result = await authenticate(reader, writer, username, password)
-            if auth_result:
-                print(f"Authentication successful for {ip}:{port}")
-            else:
-                print(f"Authentication failed for {ip}:{port}")
+            result["authentication"] = await authenticate(reader, writer, username, password)
 
         writer.close()
     except (asyncio.TimeoutError, OSError):
-        pass
+        result = {"ip": ip, "port": port, "status": "Closed"}
+
+    return result
 
 async def grab_banner(reader):
     try:
@@ -39,16 +39,53 @@ async def authenticate(reader, writer, username, password):
     except asyncio.CancelledError:
         pass
 
-async def scan_ports(ip, ports, banner_grab, username=None, password=None, timeout=1):
-    tasks = [scan_port(ip, port, banner_grab, username, password, timeout) for port in ports]
-    await asyncio.gather(*tasks)
+async def scan_ports(ip, ports, banner, username=None, password=None, timeout=1):
+    tasks = [scan_port(ip, port, banner, username, password, timeout) for port in ports]
+    return await asyncio.gather(*tasks)
 
-async def scan_cidr(cidr, ports, banner_grab, username=None, password=None, timeout=1):
+async def scan_cidr(cidr, ports, banner, username=None, password=None, timeout=1):
     network = ipaddress.IPv4Network(cidr, strict=False)
-    tasks = [scan_ports(str(ip), ports, banner_grab, username, password, timeout) for ip in network.hosts()]
-    await asyncio.gather(*tasks)
+    tasks = [scan_ports(str(ip), ports, banner, username, password, timeout) for ip in network.hosts()]
+    return await asyncio.gather(*tasks)
 
-def main():
+def save_to_json(data, output_file):
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"{output_file}_{current_time}.json"
+
+    with open(file_name, 'w') as json_file:
+        json.dump(data, json_file, indent=2)
+
+def print_results(results):
+    for ip_results in results:
+        if isinstance(ip_results, list):
+            ip_address = ip_results[0]["ip"]
+            print(f"IP: {ip_address}")
+
+            for result in ip_results:
+                port_status = f"Port: {result['port']} - {result['status']}"
+
+                if "banner" in result:
+                    port_status += f" - Banner: {result['banner']}"
+
+                if "authentication" in result:
+                    port_status += f" - Authentication: {'Successful' if result['authentication'] else 'Failed'}"
+
+                print(port_status)
+
+            print()
+        else:
+            ip_address = ip_results["ip"]
+            port_status = f"Port: {ip_results['port']} - {ip_results['status']}"
+
+            if "banner" in ip_results:
+                port_status += f" - Banner: {ip_results['banner']}"
+
+            if "authentication" in ip_results:
+                port_status += f" - Authentication: {'Successful' if ip_results['authentication'] else 'Failed'}"
+
+            print(f"IP: {ip_address} - {port_status}\n")
+
+def parse_args():
     parser = argparse.ArgumentParser(description="Advanced asynchronous port scanner")
     parser.add_argument("-c", "--cidr", help="CIDR notation for scanning multiple IPs")
     parser.add_argument("-i", "--ip", help="Single IP to scan")
@@ -56,21 +93,38 @@ def main():
     parser.add_argument("-p", "--ports", help="Comma-separated list of ports to scan")
     parser.add_argument("-t", "--timeout", type=float, default=1, help="Timeout value in seconds (default: 1)")
     parser.add_argument("--banner-grab", action="store_true", help="Grab banner/header from open ports")
+    parser.add_argument("-o", "--output", help="Output file in JSON format")
     parser.add_argument("--username", help="Username for authentication")
     parser.add_argument("--password", help="Password for authentication")
-    args = parser.parse_args()
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+
+    # Check if either -c or -i is provided, and either -l or -p is provided
+    if not ((args.cidr and (args.ports or args.portlist)) or (args.ip and (args.ports or args.portlist))):
+        print("Error: Specify either -c or -i along with either -l or -p.")
+        sys.exit(1)
 
     port_list = []
+
     if args.ports:
         port_list = [int(port) for port in args.ports.split(',')]
-    else:
+    elif args.portlist:
         with open(args.portlist, "r") as port_file:
             port_list = [int(line.strip()) for line in port_file]
 
     if args.cidr:
-        asyncio.run(scan_cidr(args.cidr, port_list, args.banner_grab, args.username, args.password, args.timeout))
+        results = asyncio.run(scan_cidr(args.cidr, port_list, args.banner_grab, args.username, args.password, args.timeout))
+        output_file_name = args.cidr.replace("/", "_") if not args.output else args.output
     else:
-        asyncio.run(scan_ports(args.ip, port_list, args.banner_grab, args.username, args.password, args.timeout))
+        results = asyncio.run(scan_ports(args.ip, port_list, args.banner_grab, args.username, args.password, args.timeout))
+        output_file_name = args.ip if not args.output else args.output
+
+    if args.output:
+        save_to_json(results, output_file_name)
+    else:
+        print_results(results)
 
 if __name__ == "__main__":
     main()
