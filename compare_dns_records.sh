@@ -1,8 +1,9 @@
 #!/bin/bash
 
-DNS_SERVER="dnsServer.com"
+DNS_SERVERS=('provider-1.dns.com' 'provider-2.dns.com' 'provider-3.dns.com')
+DNS_SERVER=${DNS_SERVERS[1]}
+FILE="results-$1"
 SAVE_TO_FILE=true
-FILE='results.txt'
 
 dns_query() {
   local domain="$1"
@@ -26,4 +27,6 @@ dns_query() {
 
 while IFS= read -r line; do
   dns_query "$line"
-done < "domains.txt"
+done < "$1"
+
+exit 0
