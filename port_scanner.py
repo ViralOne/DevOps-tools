@@ -48,6 +48,11 @@ async def scan_cidr(cidr, ports, banner, username=None, password=None, timeout=1
     tasks = [scan_ports(str(ip), ports, banner, username, password, timeout) for ip in network.hosts()]
     return await asyncio.gather(*tasks)
 
+async def scan_file(file, ports, banner, username=None, password=None, timeout=1):
+    with open(file, "r") as ip_file:
+        tasks = [scan_ports(ip.strip(), ports, banner, username, password, timeout) for ip in ip_file]
+        return await asyncio.gather(*tasks)    
+
 async def scan_range(start_ip, end_ip, ports, banner, username=None, password=None, timeout=1):
     start_ip_obj = ipaddress.IPv4Address(start_ip)
     end_ip_obj = ipaddress.IPv4Address(end_ip)
@@ -103,6 +108,7 @@ def parse_args():
     parser.add_argument("-c", "--cidr", help="CIDR notation for scanning multiple IPs")
     parser.add_argument("-i", "--ip", help="Single IP to scan")
     parser.add_argument("-r", "--range", help="IP range for scanning")
+    parser.add_argument("-f", "--file", help="IPs from a file")
     parser.add_argument("-l", "--portlist", help="File containing a list of ports")
     parser.add_argument("-p", "--ports", help="Comma-separated list of ports to scan")
     parser.add_argument("-t", "--timeout", type=float, default=1, help="Timeout value in seconds (default: 1)")
@@ -116,8 +122,8 @@ def main():
     args = parse_args()
 
     # Check if either -c, -i, or -r is provided, and either -l or -p is provided
-    if not ((args.cidr or args.ip or args.range) and (args.ports or args.portlist)):
-        print("Error: Specify either -c, -i, or -r along with either -l or -p.")
+    if not ((args.cidr or args.ip or args.range  or args.file) and (args.ports or args.portlist)):
+        print("Error: Please use -h or --help.")
         sys.exit(1)
 
     port_list = []
@@ -135,6 +141,9 @@ def main():
         start_ip, end_ip = args.range.split('-')
         results = asyncio.run(scan_range(start_ip, end_ip, port_list, args.banner, args.username, args.password, args.timeout))
         output_file_name = args.range.replace("/", "_") if not args.output else args.output
+    elif args.file:
+        results = asyncio.run(scan_file(args.file, port_list, args.banner, args.username, args.password, args.timeout))
+        output_file_name = args.file if not args.output else args.output
     else:
         results = asyncio.run(scan_ports(args.ip, port_list, args.banner, args.username, args.password, args.timeout))
         output_file_name = args.ip if not args.output else args.output
