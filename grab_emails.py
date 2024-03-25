@@ -51,6 +51,7 @@ def main():
     all_emails = extract_emails_from_directory(directory)
     results = validate_emails(all_emails)
     
+    good_emails_count = 0
     output_file = 'emails.txt'
     with open(output_file, 'a') as f:
         for result in results:
@@ -58,6 +59,9 @@ def main():
                 print(f"Invalid email: {result}")
             else:
                 f.write(result + '\n')
+                good_emails_count += 1
+
+    print(f"Number of unique emails: {good_emails_count}")
 
 if __name__ == "__main__":
     main()
