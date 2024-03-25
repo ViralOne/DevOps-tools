@@ -1,56 +1,63 @@
 # pip install bs4 email-validator
 
 import os
+import argparse
 import re
-import sys
 from concurrent.futures import ThreadPoolExecutor
-from bs4 import BeautifulSoup
 from email_validator import validate_email, EmailNotValidError
 
-def extract_emails(html_file):
-    with open(html_file, 'r', encoding='utf-8') as file:
-        soup = BeautifulSoup(file, 'html.parser')
-        text_nodes = soup.find_all(string=True)
-        emails = set()
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-        for node in text_nodes:
-            matches = re.findall(email_pattern, node)
-            emails.update(matches)
+def extract_emails(file_path):
+    emails = set()
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            for line in file:
+                email_matches = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', line)
+                for email in email_matches:
+                    emails.add(email.lower())
+    except UnicodeDecodeError:
+        print(f"Unable to decode file: {file_path}")
     return emails
 
-def validator(email, check_deliverability=False):
+def extract_emails_from_directory(directory):
+    all_emails = set()
+    for root, _, files in os.walk(directory):
+        for file in files:
+            file_path = os.path.join(root, file)
+            all_emails.update(extract_emails(file_path))
+    return all_emails
+
+def validate_email_wrapper(email):
     try:
-        if check_deliverability:
-            validate_email(email, check_deliverability=True)
-        else:
-            validate_email(email)
+        validate_email(email, check_deliverability=True)
         return email
     except EmailNotValidError as e:
         return e
 
 def validate_emails(emails):
     with ThreadPoolExecutor() as executor:
-        results = executor.map(lambda email: (email, validator(email, check_deliverability=True)), emails)
+        results = executor.map(validate_email_wrapper, emails)
     return results
 
-def main(directory_path):
-    all_emails = set()
-    for file_name in os.listdir(directory_path):
-        file_path = os.path.join(directory_path, file_name)
-        emails = extract_emails(file_path)
-        all_emails.update(emails)
-    
+def main():
+    parser = argparse.ArgumentParser(description="Grab emails from all files in a directory")
+    parser.add_argument("directory_path", help="Path to the directory containing files")
+    args = parser.parse_args()
+
+    directory = args.directory_path
+    if not os.path.isdir(directory):
+        print("Invalid directory path.")
+        return
+
+    all_emails = extract_emails_from_directory(directory)
     results = validate_emails(all_emails)
-    for email, result in results:
-        if isinstance(result, EmailNotValidError):
-            print(f"Invalid email: {email}")
-        else:
-            with open('emails.txt', 'a') as f:
-                f.write(email + '\n')
     
+    output_file = 'emails.txt'
+    with open(output_file, 'a') as f:
+        for result in results:
+            if isinstance(result, EmailNotValidError):
+                print(f"Invalid email: {result}")
+            else:
+                f.write(result + '\n')
+
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Grab emails from all html files in a directory")
-        print("Usage: python3 get_emails.py <directory_path>")
-        sys.exit(1)
-    main(sys.argv[1])
+    main()
