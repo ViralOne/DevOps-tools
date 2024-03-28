@@ -31,7 +31,7 @@ def search_word_in_files(directory, word, extensions, recursive, display_context
                     for line in lines:
                         if fnmatch.fnmatch(line, '*' + word):
                             found_files.append((file_path, line))
-                            break
+                            break  # Stop searching the rest of the lines in the file
     return found_files
 
 def main():
@@ -71,3 +71,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ToDo: Exclude certain paths, parallelization
