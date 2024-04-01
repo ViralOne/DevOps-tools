@@ -47,6 +47,9 @@ if [ "${zone_comment}" == 'null' ];then
     zone_comment="${zone_name} zone"
 fi
 
+# Remove DNS zone file if present
+rm dns-zone-${zone_name}.tf
+
 # Write aws_route53_zone resource to terraform file
 cat << EOF > dns-zone-${zone_name}.tf
 resource "aws_route53_zone" "${zone_slug}" {
