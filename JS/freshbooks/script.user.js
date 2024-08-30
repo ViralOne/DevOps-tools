@@ -7,9 +7,9 @@
 // @match        https://my.freshbooks.com/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=freshbooks.com
 // @grant        GM_notification
-// @homepage     https://github.com/ViralOne/DevOps-tools/tree/main/JS/Freshbooks
-// @downloadURL  https://raw.githubusercontent.com/ViralOne/DevOps-tools/main/JS/Freshbooks/script.user.js
-// @updateURL    https://raw.githubusercontent.com/ViralOne/DevOps-tools/main/JS/Freshbooks/script.user.js
+// @homepage     https://github.com/ViralOne/DevOps-tools/tree/main/JS/freshbooks
+// @downloadURL  https://raw.githubusercontent.com/ViralOne/DevOps-tools/main/JS/freshbooks/script.user.js
+// @updateURL    https://raw.githubusercontent.com/ViralOne/DevOps-tools/main/JS/freshbooks/script.user.js
 // ==/UserScript==
 
 (function () {
