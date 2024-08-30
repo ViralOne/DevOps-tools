@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Check Missing Working Days
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/ViralOne/DevOps-tools/
 // @version      1.3
 // @description  Check for missing working days
 // @author       ViralOne
