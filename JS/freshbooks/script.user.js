@@ -587,18 +587,37 @@ function getWorkedHour() {
   });
 
   const insufficientHours = {};
-  for (const [date, hours] of Object.entries(hoursByDate)) {
-      // Check if the date is in the ignored hours map
-      if (hours < WORKING_HOURS && !ignoredHoursMap[date]) {
-          insufficientHours[date] = hours;
-          const message = `Warning: On ${date}, only ${hours} hours were billed.`;
-          createNotificationBanner(
-            message, true,
-          );
-        if (SEND_END_OF_DAY_NOTIFICATION === true) {
-          sendNotification("Wrong billed time", message);
-        }
-    }
+  const isSpecialCase = (WORKING_HOURS === 20 || WORKING_HOURS === 40);
+
+  if (isSpecialCase) {
+      // Check only for Fridays
+      for (const [date, hours] of Object.entries(hoursByDate)) {
+          const dayOfWeek = new Date(date).getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+
+          if (dayOfWeek === 5) { // Check if it's Friday
+              if (hours < 40 && !ignoredHoursMap[date]) {
+                  insufficientHours[date] = hours;
+                  const message = `Warning: On ${date}, only ${hours} hours were billed.`;
+                  createNotificationBanner(message, true);
+                  if (SEND_END_OF_DAY_NOTIFICATION === true) {
+                      sendNotification("Wrong billed time", message);
+                  }
+              }
+          }
+      }
+  } else {
+      // Original logic for other cases
+      for (const [date, hours] of Object.entries(hoursByDate)) {
+          // Check if the date is in the ignored hours map
+          if (hours < WORKING_HOURS && !ignoredHoursMap[date]) {
+              insufficientHours[date] = hours;
+              const message = `Warning: On ${date}, only ${hours} hours were billed.`;
+              createNotificationBanner(message, true);
+              if (SEND_END_OF_DAY_NOTIFICATION === true) {
+                  sendNotification("Wrong billed time", message);
+              }
+          }
+      }
   }
 
   return insufficientHours;
