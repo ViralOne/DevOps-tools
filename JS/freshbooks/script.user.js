@@ -135,10 +135,9 @@
 
     localStorage.setItem("ignoredHours", JSON.stringify(ignoredHours));
   }
-
 // Function to create a popup for missed days and service counts
-  function createSummaryWindow(missingDays, insufficientHours, serviceCounts) {
-    const popup = createStyledElement("div", {
+function createSummaryWindow(missingDays, insufficientHours, serviceCounts) {
+  const popup = createStyledElement("div", {
       position: "fixed",
       top: `${lastPopupTop}px`,
       right: "15px",
@@ -151,7 +150,7 @@
       maxHeight: "80vh",
       overflowY: "auto",
       width: "250px",
-    });
+  });
 
   const header = createPopupHeader(popup, "Workday Summary");
   popup.appendChild(header);
@@ -160,13 +159,13 @@
   const serviceCountsHeader = createStyledElement(
       "h4",
       { fontWeight: "bold" },
-      "Services overview"
+      "Services Overview"
   );
-  popup.appendChild(serviceCountsHeader);
 
-  for (const [serviceType, count] of Object.entries(serviceCounts)) {
-      if (count > 0) {
-          const serviceRow = createStyledElement("div", {}, `${serviceType}: ${count} hours`);
+  for (const [serviceType, data] of Object.entries(serviceCounts)) {
+      if (data.count > 0) { // Check if there are entries for the service type
+          popup.appendChild(serviceCountsHeader);
+          const serviceRow = createStyledElement("div", {}, `${serviceType}: ${data.count} | ${data.totalHours} hours`);
           popup.appendChild(serviceRow);
       }
   }
@@ -179,20 +178,20 @@
       );
       popup.appendChild(missingDaysHeader);
       missingDays.forEach((missingDay) =>
-        createMissingDayRow(popup, missingDay, 0)
+          createMissingDayRow(popup, missingDay, 0)
       );
   }
 
   if (Object.keys(insufficientHours).length > 0) {
-    const insufficientHoursHeader = createStyledElement(
-      "h4",
-      { fontWeight: "bold" },
-      "Insufficient Hours"
-    );
-    popup.appendChild(insufficientHoursHeader);
-    for (const [day, hours] of Object.entries(insufficientHours)) {
-      createMissingDayRow(popup, day, hours);
-    }
+      const insufficientHoursHeader = createStyledElement(
+          "h4",
+          { fontWeight: "bold" },
+          "Insufficient Hours"
+      );
+      popup.appendChild(insufficientHoursHeader);
+      for (const [day, hours] of Object.entries(insufficientHours)) {
+          createMissingDayRow(popup, day, hours);
+      }
   }
 
   document.body.appendChild(popup);
@@ -636,33 +635,36 @@ function getWorkedHour() {
   return insufficientHours;
 }
 
-  function getServiceCounts() {
-    const rows = document.querySelectorAll(".entity-table-row");
+function getServiceCounts() {
+  const rows = document.querySelectorAll(".entity-table-row");
 
-    // Initialize counters for service types
-    const serviceCounts = {
-        General: 0,
-        Meetings: 0,
-        Programming: 0,
-        Research: 0,
-        qa: 0
-    };
+  // Initialize counters for service types and total hours
+  const serviceCounts = {
+      General: { count: 0, totalHours: 0 },
+      Meetings: { count: 0, totalHours: 0 },
+      Programming: { count: 0, totalHours: 0 },
+      Research: { count: 0, totalHours: 0 },
+      qa: { count: 0, totalHours: 0 }
+  };
 
-    rows.forEach((row) => {
-        const serviceElement = row.querySelector(".js-time-entry-table-service");
+  rows.forEach((row) => {
+      const serviceElement = row.querySelector(".js-time-entry-table-service");
+      const timeElement = row.querySelector(".entity-table-body-cell-primary.u-truncate.js-time-entry-table-time");
 
-        // Count the service type
-        if (serviceElement) {
-            const serviceType = serviceElement.textContent.trim();
-            if (serviceCounts.hasOwnProperty(serviceType)) {
-                serviceCounts[serviceType]++;
-            }
-        }
-    });
+      // Count the service type and total hours
+      if (serviceElement && timeElement) {
+          const serviceType = serviceElement.textContent.trim();
+          const hoursWorked = parseInt(timeElement.textContent.match(/(\d+)h/)?.[1] || 0, 10);
 
-    return serviceCounts;
-  }
+          if (serviceCounts.hasOwnProperty(serviceType)) {
+              serviceCounts[serviceType].count++;
+              serviceCounts[serviceType].totalHours += hoursWorked;
+          }
+      }
+  });
 
+  return serviceCounts;
+}
 
   // Execute the checks
   setTimeout(() => {
