@@ -136,8 +136,8 @@
     localStorage.setItem("ignoredHours", JSON.stringify(ignoredHours));
   }
 
-  // Function to create a popup for missed days
-  function createSummaryWindow(missingDays, insufficientHours) {
+// Function to create a popup for missed days and service counts
+  function createSummaryWindow(missingDays, insufficientHours, serviceCounts) {
     const popup = createStyledElement("div", {
       position: "fixed",
       top: `${lastPopupTop}px`,
@@ -153,39 +153,54 @@
       width: "250px",
     });
 
-    const header = createPopupHeader(popup, "Workday Summary");
-    popup.appendChild(header);
+  const header = createPopupHeader(popup, "Workday Summary");
+  popup.appendChild(header);
 
-    if (missingDays.length > 0) {
+  // Display service counts
+  const serviceCountsHeader = createStyledElement(
+      "h4",
+      { fontWeight: "bold" },
+      "Services overview"
+  );
+  popup.appendChild(serviceCountsHeader);
+
+  for (const [serviceType, count] of Object.entries(serviceCounts)) {
+      if (count > 0) {
+          const serviceRow = createStyledElement("div", {}, `${serviceType}: ${count} hours`);
+          popup.appendChild(serviceRow);
+      }
+  }
+
+  if (missingDays.length > 0) {
       const missingDaysHeader = createStyledElement(
-        "h4",
-        { fontWeight: "bold" },
-        "Missing Days",
+          "h4",
+          { fontWeight: "bold" },
+          "Missing Days"
       );
       popup.appendChild(missingDaysHeader);
       missingDays.forEach((missingDay) =>
-        createMissingDayRow(popup, missingDay, 0),
+        createMissingDayRow(popup, missingDay, 0)
       );
-    }
-
-    if (Object.keys(insufficientHours).length > 0) {
-      const insufficientHoursHeader = createStyledElement(
-        "h4",
-        { fontWeight: "bold" },
-        "Insufficient Hours",
-      );
-      popup.appendChild(insufficientHoursHeader);
-      for (const [day, hours] of Object.entries(insufficientHours)) {
-        createMissingDayRow(popup, day, hours);
-      }
-    }
-
-    document.body.appendChild(popup);
-    makePopupDraggable(popup, header);
-
-    // Update lastPopupTop for the next popup
-    lastPopupTop += popup.offsetHeight + 10;
   }
+
+  if (Object.keys(insufficientHours).length > 0) {
+    const insufficientHoursHeader = createStyledElement(
+      "h4",
+      { fontWeight: "bold" },
+      "Insufficient Hours"
+    );
+    popup.appendChild(insufficientHoursHeader);
+    for (const [day, hours] of Object.entries(insufficientHours)) {
+      createMissingDayRow(popup, day, hours);
+    }
+  }
+
+  document.body.appendChild(popup);
+  makePopupDraggable(popup, header);
+
+  // Update lastPopupTop for the next popup
+  lastPopupTop += popup.offsetHeight + 10;
+}
 
   // Function to create a settings panel
   function createSettingsWindow() {
@@ -554,7 +569,6 @@
 
     return missingDays;
 }
-
 function getWorkedHour() {
   const rows = document.querySelectorAll(".entity-table-row");
   const hoursByDate = {};
@@ -606,7 +620,6 @@ function getWorkedHour() {
           }
       }
   } else {
-      // Original logic for other cases
       for (const [date, hours] of Object.entries(hoursByDate)) {
           // Check if the date is in the ignored hours map
           if (hours < WORKING_HOURS && !ignoredHoursMap[date]) {
@@ -623,16 +636,45 @@ function getWorkedHour() {
   return insufficientHours;
 }
 
+  function getServiceCounts() {
+    const rows = document.querySelectorAll(".entity-table-row");
+
+    // Initialize counters for service types
+    const serviceCounts = {
+        General: 0,
+        Meetings: 0,
+        Programming: 0,
+        Research: 0,
+        qa: 0
+    };
+
+    rows.forEach((row) => {
+        const serviceElement = row.querySelector(".js-time-entry-table-service");
+
+        // Count the service type
+        if (serviceElement) {
+            const serviceType = serviceElement.textContent.trim();
+            if (serviceCounts.hasOwnProperty(serviceType)) {
+                serviceCounts[serviceType]++;
+            }
+        }
+    });
+
+    return serviceCounts;
+  }
+
+
   // Execute the checks
   setTimeout(() => {
     const missingDays = checkMissedWorkdays();
     const insufficientHours = getWorkedHour();
+    const serviceCounts = getServiceCounts();
 
     if (missingDays.length > 0 || Object.keys(insufficientHours).length > 0) {
-      createSummaryWindow(missingDays, insufficientHours);
+      createSummaryWindow(missingDays, insufficientHours, serviceCounts);
     } else {
       createNotificationBanner(`No missed workdays found.`, false);
     }
-  }, DELAY_FOR_CHECK);
+}, DELAY_FOR_CHECK);
 })();
 
