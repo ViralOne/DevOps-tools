@@ -203,7 +203,7 @@ function createSummaryWindow(missingDays, insufficientHours, excessiveHours, ser
       const excessiveHoursHeader = createStyledElement(
           "h4",
           { fontWeight: "bold" },
-          "ExcessiveHours Hours"
+          "Excessive Hours"
       );
       popup.appendChild(excessiveHoursHeader);
       for (const [day, hours] of Object.entries(excessiveHours)) {
@@ -649,7 +649,7 @@ function getWorkedHour() {
               }
           } else if (hours > WORKING_HOURS && !ignoredHoursMap[date]) {
               excessiveHours[date] = hours;
-              const message = `Warning: On ${date}, only ${hours} hours were billed.`;
+              const message = `Warning: On ${date}, you billed more hours: ${hours}.`;
               createNotificationBanner(message, true);
               if (SEND_END_OF_DAY_NOTIFICATION === true) {
                   sendNotification("Wrong billed time", message);
