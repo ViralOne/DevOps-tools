@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Check Missing Working Days
 // @namespace    https://github.com/ViralOne/DevOps-tools/
-// @version      1.6
+// @version      1.6.5
 // @description  Check for missing working days
 // @author       ViralOne
 // @match        https://my.freshbooks.com/
@@ -136,7 +136,7 @@
     localStorage.setItem("ignoredHours", JSON.stringify(ignoredHours));
   }
 // Function to create a popup for missed days and service counts
-function createSummaryWindow(missingDays, insufficientHours, excessiveHours, serviceCounts) {
+function createSummaryWindow(missingDays, insufficientHours, extraHours, serviceCounts) {
   const popup = createStyledElement("div", {
       position: "fixed",
       top: `${lastPopupTop}px`,
@@ -161,7 +161,7 @@ function createSummaryWindow(missingDays, insufficientHours, excessiveHours, ser
       { fontWeight: "bold" },
       "Services Overview"
   );
-  
+
   popup.appendChild(serviceCountsHeader);
 
   for (const [serviceType, data] of Object.entries(serviceCounts)) {
@@ -183,6 +183,7 @@ function createSummaryWindow(missingDays, insufficientHours, excessiveHours, ser
       );
   }
 
+  // Check if there are less billed hours to display
   if (Object.keys(insufficientHours).length > 0) {
       const insufficientHoursHeader = createStyledElement(
           "h4",
@@ -198,17 +199,17 @@ function createSummaryWindow(missingDays, insufficientHours, excessiveHours, ser
   document.body.appendChild(popup);
   makePopupDraggable(popup, header);
 
-    // excessiveHours
-    if (Object.keys(insufficientHours).length > 0) {
-      const excessiveHoursHeader = createStyledElement(
-          "h4",
-          { fontWeight: "bold" },
-          "Excessive Hours"
-      );
-      popup.appendChild(excessiveHoursHeader);
-      for (const [day, hours] of Object.entries(excessiveHours)) {
-          createMissingDayRow(popup, day, hours);
-      }
+  // Check if there are extra hours to display
+  if (Object.keys(extraHours).length > 0) {
+    const extraHoursHeader = createStyledElement(
+        "h4",
+        { fontWeight: "bold" },
+        "Extra Hours"
+    );
+    popup.appendChild(extraHoursHeader);
+    for (const [day, hours] of Object.entries(extraHours)) {
+        createMissingDayRow(popup, day, hours);
+    }
   }
 
   document.body.appendChild(popup);
@@ -578,7 +579,7 @@ function createSummaryWindow(missingDays, insufficientHours, excessiveHours, ser
     if (missingDays.length > 0) {
         const message = `Reminder: You haven't added time for the following days: ${missingDays.join(", ")}`;
         createNotificationBanner(message, true);
-        if (SEND_END_OF_DAY_NOTIFICATION === true) {
+        if (SEND_END_OF_DAY_NOTIFICATION === true && today.getDate() >= 25) {
           sendNotification("Missing Working Days", message);
         }
     }
@@ -617,47 +618,46 @@ function getWorkedHour() {
   });
 
   const insufficientHours = {};
-  const excessiveHours = {};
+  const extraHours = {};
   const isSpecialCase = (WORKING_HOURS === 20 || WORKING_HOURS === 40);
 
-  if (isSpecialCase) {
-      // Check only for Fridays
-      for (const [date, hours] of Object.entries(hoursByDate)) {
-          const dayOfWeek = new Date(date).getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+    if (isSpecialCase) {
+        // Check only for Fridays
+        for (const [date, hours] of Object.entries(hoursByDate)) {
+            const dayOfWeek = new Date(date).getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
 
-          if (dayOfWeek === 5) { // Check if it's Friday
-              if (hours < 40 && !ignoredHoursMap[date]) {
-                  insufficientHours[date] = hours;
-                  excessiveHours[date] = hours;
-                  const message = `Warning: On ${date}, only ${hours} hours were billed.`;
-                  createNotificationBanner(message, true);
-                  if (SEND_END_OF_DAY_NOTIFICATION === true) {
-                      sendNotification("Wrong billed time", message);
-                  }
-              }
-          }
-      }
-  } else {
-      for (const [date, hours] of Object.entries(hoursByDate)) {
-          // Check if the date is in the ignored hours map
-          if (hours < WORKING_HOURS && !ignoredHoursMap[date]) {
-              insufficientHours[date] = hours;
-              const message = `Warning: On ${date}, only ${hours} hours were billed.`;
-              createNotificationBanner(message, true);
-              if (SEND_END_OF_DAY_NOTIFICATION === true) {
-                  sendNotification("Wrong billed time", message);
-              }
-          } else if (hours > WORKING_HOURS && !ignoredHoursMap[date]) {
-              excessiveHours[date] = hours;
-              const message = `Warning: On ${date}, you billed more hours: ${hours}.`;
-              createNotificationBanner(message, true);
-              if (SEND_END_OF_DAY_NOTIFICATION === true) {
-                  sendNotification("Wrong billed time", message);
-              }
-          }
-      }
-  }
-    return { insufficientHours, excessiveHours };
+            if (dayOfWeek === 5) { // Check if it's Friday
+                if (hours < 40 && !ignoredHoursMap[date]) {
+                    insufficientHours[date] = hours;
+                    const message = `Warning: On ${date}, only ${hours} hours were billed.`;
+                    createNotificationBanner(message, true);
+                    if (SEND_END_OF_DAY_NOTIFICATION === true) {
+                        sendNotification("Wrong billed time", message);
+                    }
+                }
+            }
+        }
+    } else {
+        for (const [date, hours] of Object.entries(hoursByDate)) {
+            // Check if the date is in the ignored hours map
+            if (hours < WORKING_HOURS && !ignoredHoursMap[date]) {
+                insufficientHours[date] = hours;
+                const message = `Warning: On ${date}, only ${hours} hours were billed.`;
+                createNotificationBanner(message, true);
+                if (SEND_END_OF_DAY_NOTIFICATION === true) {
+                    sendNotification("Wrong billed time", message);
+                }
+            } else if (hours > WORKING_HOURS && !ignoredHoursMap[date]) {
+                extraHours[date] = hours;
+                const message = `Warning: On ${date}, you billed more hours: ${hours}.`;
+                createNotificationBanner(message, true);
+                if (SEND_END_OF_DAY_NOTIFICATION === true) {
+                    sendNotification("Wrong billed time", message);
+                }
+            }
+        }
+    }
+    return { insufficientHours, extraHours };
 }
 
 function getServiceCounts() {
@@ -694,13 +694,14 @@ function getServiceCounts() {
   // Execute the checks
   setTimeout(() => {
     const missingDays = checkMissedWorkdays();
-    const {insufficientHours, excessiveHours} = getWorkedHour();
+    const {insufficientHours, extraHours} = getWorkedHour();
     const serviceCounts = getServiceCounts();
 
     if (missingDays.length > 0 || Object.keys(insufficientHours).length > 0) {
-      createSummaryWindow(missingDays, insufficientHours, excessiveHours, serviceCounts);
+      createSummaryWindow(missingDays, insufficientHours, extraHours, serviceCounts);
     } else {
       createNotificationBanner(`No missed workdays found.`, false);
+      createSummaryWindow(missingDays, insufficientHours, extraHours, serviceCounts);
     }
 }, DELAY_FOR_CHECK);
 })();
