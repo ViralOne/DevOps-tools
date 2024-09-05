@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Check Missing Working Days
 // @namespace    https://github.com/ViralOne/DevOps-tools/
-// @version      1.5
+// @version      1.6
 // @description  Check for missing working days
 // @author       ViralOne
 // @match        https://my.freshbooks.com/
@@ -136,7 +136,7 @@
     localStorage.setItem("ignoredHours", JSON.stringify(ignoredHours));
   }
 // Function to create a popup for missed days and service counts
-function createSummaryWindow(missingDays, insufficientHours, serviceCounts) {
+function createSummaryWindow(missingDays, insufficientHours, excessiveHours, serviceCounts) {
   const popup = createStyledElement("div", {
       position: "fixed",
       top: `${lastPopupTop}px`,
@@ -191,6 +191,22 @@ function createSummaryWindow(missingDays, insufficientHours, serviceCounts) {
       );
       popup.appendChild(insufficientHoursHeader);
       for (const [day, hours] of Object.entries(insufficientHours)) {
+          createMissingDayRow(popup, day, hours);
+      }
+  }
+
+  document.body.appendChild(popup);
+  makePopupDraggable(popup, header);
+
+    // excessiveHours
+    if (Object.keys(insufficientHours).length > 0) {
+      const excessiveHoursHeader = createStyledElement(
+          "h4",
+          { fontWeight: "bold" },
+          "ExcessiveHours Hours"
+      );
+      popup.appendChild(excessiveHoursHeader);
+      for (const [day, hours] of Object.entries(excessiveHours)) {
           createMissingDayRow(popup, day, hours);
       }
   }
@@ -601,6 +617,7 @@ function getWorkedHour() {
   });
 
   const insufficientHours = {};
+  const excessiveHours = {};
   const isSpecialCase = (WORKING_HOURS === 20 || WORKING_HOURS === 40);
 
   if (isSpecialCase) {
@@ -611,6 +628,7 @@ function getWorkedHour() {
           if (dayOfWeek === 5) { // Check if it's Friday
               if (hours < 40 && !ignoredHoursMap[date]) {
                   insufficientHours[date] = hours;
+                  excessiveHours[date] = hours;
                   const message = `Warning: On ${date}, only ${hours} hours were billed.`;
                   createNotificationBanner(message, true);
                   if (SEND_END_OF_DAY_NOTIFICATION === true) {
@@ -629,11 +647,17 @@ function getWorkedHour() {
               if (SEND_END_OF_DAY_NOTIFICATION === true) {
                   sendNotification("Wrong billed time", message);
               }
+          } else if (hours > WORKING_HOURS && !ignoredHoursMap[date]) {
+              excessiveHours[date] = hours;
+              const message = `Warning: On ${date}, only ${hours} hours were billed.`;
+              createNotificationBanner(message, true);
+              if (SEND_END_OF_DAY_NOTIFICATION === true) {
+                  sendNotification("Wrong billed time", message);
+              }
           }
       }
   }
-
-  return insufficientHours;
+    return { insufficientHours, excessiveHours };
 }
 
 function getServiceCounts() {
@@ -670,11 +694,11 @@ function getServiceCounts() {
   // Execute the checks
   setTimeout(() => {
     const missingDays = checkMissedWorkdays();
-    const insufficientHours = getWorkedHour();
+    const {insufficientHours, excessiveHours} = getWorkedHour();
     const serviceCounts = getServiceCounts();
 
     if (missingDays.length > 0 || Object.keys(insufficientHours).length > 0) {
-      createSummaryWindow(missingDays, insufficientHours, serviceCounts);
+      createSummaryWindow(missingDays, insufficientHours, excessiveHours, serviceCounts);
     } else {
       createNotificationBanner(`No missed workdays found.`, false);
     }
