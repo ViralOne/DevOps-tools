@@ -161,10 +161,11 @@ function createSummaryWindow(missingDays, insufficientHours, serviceCounts) {
       { fontWeight: "bold" },
       "Services Overview"
   );
+  
+  popup.appendChild(serviceCountsHeader);
 
   for (const [serviceType, data] of Object.entries(serviceCounts)) {
       if (data.count > 0) { // Check if there are entries for the service type
-          popup.appendChild(serviceCountsHeader);
           const serviceRow = createStyledElement("div", {}, `${serviceType}: ${data.count} | ${data.totalHours} hours`);
           popup.appendChild(serviceRow);
       }
