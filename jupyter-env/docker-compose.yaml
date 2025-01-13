@@ -2,14 +2,14 @@ version: "3.8"
 services:
     juptyer:
         tty: true
-        image: quay.io/jupyter/base-notebook:latest
+        image: quay.io/jupyter/scipy-notebook:latest
         user: root
         environment:
             GRANT_SUDO: "yes"
         ports:
             - "8888:8888"
         volumes:
-            - ./work:/home/jovyan/work
+            - ./work:/home/jovyan
         command: start-notebook.sh --NotebookApp.token=''
         networks:
         - jupyter
