@@ -1,8 +1,8 @@
 version: "3.8"
 services:
-    agile:
+    juptyer:
         tty: true
-        image: jupyter/pyspark-notebook:latest
+        image: quay.io/jupyter/base-notebook:latest
         user: root
         environment:
             GRANT_SUDO: "yes"
@@ -11,3 +11,9 @@ services:
         volumes:
             - ./work:/home/jovyan/work
         command: start-notebook.sh --NotebookApp.token=''
+        networks:
+        - jupyter
+
+networks:
+  jupyter:
+    name: jupyter
