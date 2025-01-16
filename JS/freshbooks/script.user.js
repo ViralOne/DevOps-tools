@@ -667,6 +667,7 @@ function getServiceCounts() {
   const serviceCounts = {
       General: { count: 0, totalHours: 0 },
       Meetings: { count: 0, totalHours: 0 },
+      DevOps: { count: 0, totalHours: 0 },
       Programming: { count: 0, totalHours: 0 },
       Research: { count: 0, totalHours: 0 },
       qa: { count: 0, totalHours: 0 }
